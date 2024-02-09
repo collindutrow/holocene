@@ -5,6 +5,8 @@
 
 /*
 TODO: Create a closer parity with the linux date command.
+LINUX DATE COMMAND MAN PAGE.
+Remove irrelevant and already implemented information.
 https://linux.die.net/man/1/date
 -----------
 Name: date - print or set the system date and time
@@ -15,9 +17,6 @@ date [-u|--utc|--universal] [MMDDhhmm[[CC]YY][.ss]]
 
 Description: Display the current time in the given FORMAT, or set the system date.
 -----------
-
--d, --date=STRING
-display time described by STRING, not 'now'
 
 -f, --file=DATEFILE
 like --date once for each line of DATEFILE
@@ -31,17 +30,8 @@ output date and time in RFC 2822 format. Example: Mon, 07 Aug 2006 12:34:56 -060
 --rfc-3339=TIMESPEC
 output date and time in RFC 3339 format. TIMESPEC='date', 'seconds', or 'ns' for date and time to the indicated precision. Date and time components are separated by a single space: 2006-08-07 12:34:56-06:00
 
--s, --set=STRING
-set time described by STRING
-
 -u, --utc, --universal
 print or set Coordinated Universal Time
-
---help
-display this help and exit
-
---version
-output version information and exit
 
 -----------
 FORMAT
@@ -85,9 +75,9 @@ TZ
 Specifies the timezone, unless overridden by command line parameters. If neither is specified, the setting from /etc/localtime is used.
 */
 
-// holocene a holcene (or human era) date print out application analogous to the linux date command.
+// holocene a holocene (or human era) date print out application analogous to the linux date command.
 // Aims to be a very close clone of the linux date command without the setting of the system date.
-// Also designed to convert convert BCE dates to Holocene dates.
+// Also designed to convert BCE dates to Holocene dates.
 
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -138,7 +128,7 @@ fn main() {
 
     // Check if -d or --date is set.
     if matches.try_contains_id("date").unwrap() {
-        if let Some(ref String) = formatter {
+        if let Some(ref format_string) = formatter {
             // If there is a date string and a formatter string, print the date string using the formatter string.
             println!("{}", parse_date_string::<Utc>(date.unwrap(), Some(&formatter.unwrap())));
         } else {
@@ -153,10 +143,12 @@ fn main() {
         println!("{}", parse_date_string::<Utc>("now", None));
     }
 
+    // Pure format date strings.
     assert_eq!(parse_date_string::<Utc>("12/10/1995", None), "Sun 12 10 00:00:00 AM UTC 11995");
     assert_eq!(parse_date_string::<Utc>("1995/12/10", None), "Sun 12 10 00:00:00 AM UTC 11995");
     assert_eq!(parse_date_string::<Utc>("12:01:57 12/10/1995", None), "Sun 12 10 12:01:57 PM UTC 11995");
     assert_eq!(parse_date_string::<Utc>("12/10/1995 12:01:57", None), "Sun 12 10 12:01:57 PM UTC 11995");
+    // Mixed formats plain text + date strings
     assert_eq!(parse_date_string::<Utc>("+saz 12/10/1995 12:01:57 asdfz", None), "Sun 12 10 12:01:57 PM UTC 11995");
     assert_eq!(parse_date_string::<Utc>("+saz 12/10/9999 12:01:57 BCE asdfz", None), "Fri 12 10 12:01:57 PM UTC 2");
     assert_eq!(parse_date_string::<Utc>("+saz 12/10/9999 12:01:57 BCE asdfz", Some("%m-%d-%Y %H:%M:%S %z %Z %E")), "12-10-2 12:01:57 +0000 UTC HE");
@@ -197,15 +189,6 @@ fn holocene_year<T: TimeZone>(dt: DateTime<T>) -> String {
 ///
 /// ```
 fn parse_date_string<T>(input: &str, formatter: Option<&str>) -> String {
-    // Extract date from strings like "YYYY/MM/DD HH:MM:SS" and "MM/DD/YYYY HH:MM:SS" where the month and or time are optional.
-    // If the string contains BCE or BC then subtract the current year from the year in the string.
-    // If the string contains CE or AD then just remove the CE or AD from the string.
-    // Figure out the date from strings like +/-1 second(s), minute(s), day(s), week(s), month(s), year(s) E.G. "+1 day" and "-1 year"
-    // Also figure out the date from strings like last/next as +1 <measurement> and -1 <measurement> respectively.
-    // Also figure out the date from strings like last/next <day of week> E.G. "last Monday" and "next Monday"
-    // Also figure out the date from strings like "mm/dd/yy" and "mm-dd-yy"
-    // Ignore extra spaces in the string except for 'next/last' strings.
-
     // Trim the input string.
     let input = input.trim();
 
@@ -213,13 +196,15 @@ fn parse_date_string<T>(input: &str, formatter: Option<&str>) -> String {
     // TODO: add support for "ago" E.G. "1 day ago"
 
     // Regexes for parsing the date segments from the input string.
-    let mut re_mdy = Regex::new(r"(?:(?P<month>\d{1,2})/(?P<day>\d{1,2})/(?P<year>\d{4}))").unwrap();
-    let mut re_ymd = Regex::new(r"(?:(?P<year>\d{4})/(?P<month>\d{1,2})/(?P<day>\d{1,2}))").unwrap();
+    let re_mdy = Regex::new(r"(?:(?P<month>\d{1,2})/(?P<day>\d{1,2})/(?P<year>\d{4}))").unwrap();
+    let re_ymd = Regex::new(r"(?:(?P<year>\d{4})/(?P<month>\d{1,2})/(?P<day>\d{1,2}))").unwrap();
     let re_hms = Regex::new(r"(?:(?P<hour>\d{1,2}):(?P<minute>\d{1,2}):(?P<second>\d{1,2}))").unwrap();
     let re_relative = Regex::new(r"^\s*(?P<sign>[+-])(?P<value>\d+)\s+(?P<unit>second|minute|hour|day|week|month|year)s?\s*$").unwrap();
     let re_relative_word = Regex::new(r"^\s*(?P<sign>next|last)\s+(?P<unit>second|minute|hour|day|week|month|year)s?\s*$").unwrap();
     let re_timezone = Regex::new(r"^(?P<timezone>[A-Z]{3,5})$").unwrap();
     let re_year_notation = Regex::new(r"(?i)(BCE|BC)").unwrap();
+
+    // TODO: Implement attempting to parse the input string as a date string, if success use that to determine the year as a cheat.
 
     let mut input_date: LocalResult<DateTime<Utc>> = chrono::LocalResult::Single(Utc::now());
 

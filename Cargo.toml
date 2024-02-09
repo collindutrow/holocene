@@ -10,3 +10,6 @@ chrono = { version = "0.4.31", features = [] }
 chrono-tz = "0.8.4"
 clap = { version = "4.4.7", features = ["derive"] }
 regex = "1.10.2"
+
+[build]
+rustc-wrapper = "/opt/homebrew/bin/sccache"
